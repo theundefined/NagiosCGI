@@ -178,6 +178,7 @@ class Nagcgi:
     CMD_CUSTOM_COMMAND = 999
     _time_fmt = '%m-%d-%Y %T'
     debug = False
+    author = None
 
     def __init__(self, hostname, userid = None, password = None,
                  secure = None, cgi = '/nagios/cgi-bin/cmd.cgi', debug = False):
@@ -198,7 +199,10 @@ class Nagcgi:
                           passwd=password)
         auth_handler = urllib2.HTTPBasicAuthHandler(auth_manager)
         self.opener = urllib2.build_opener(auth_handler)
-        self.opener.addheaders = [('User-agent', 'NagCGI Python Library/0.1')]
+        self.opener.addheaders = [
+                ('User-agent', 'NagCGI Python Library/0.1'),
+                ('Referer', self.uri)
+        ]
         return
 
     def _dispatch(self, cmd, **kwargs):
@@ -206,14 +210,19 @@ class Nagcgi:
 
         Send the completed command to the Nagios server.  No checking.'''
         if kwargs.has_key('author'):
-            if kwargs['author'] == None: kwargs['author'] = self.author
+            if not kwargs['author']: kwargs['author'] = self.author
         kwargs['cmd_typ'] = cmd
         kwargs['cmd_mod'] = self._commit
+        kwargs['btnSubmit'] = 'Commit'
+        if kwargs.has_key('host') and kwargs.has_key('service'):
+            kwargs['hostservice']=kwargs['host']+'^'+kwargs['service']
+            del kwargs['host']
+            del kwargs['service']
         data = urllib.urlencode(kwargs)
 
         if self.debug:
-            print "URI: %s" % (self.uri)
-            print "DATA: %s" % (data)
+            print("URI: %s" % (self.uri))
+            print("DATA: %s" % (data))
 
         return self.opener.open(self.uri, data).read()
 
